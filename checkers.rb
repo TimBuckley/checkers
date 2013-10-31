@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 require 'colorize'
 
+# REV: Wish there was some UI functionality to test it out easier
+
 class Game
   attr_accessor :board
   def initialize
@@ -36,6 +38,10 @@ class Board
   end
 
   def starting_positions
+    # REV: While this looked simple, it took a couple times to figure out
+    #      adding the r_num and c_num seems like a good trick. And the use
+    #      of case statements with ranges made this a nice clean solution.
+
     self.rows.each_with_index do |row,r_num|
       row.each_with_index do |sqr, c_num|
         if (r_num + c_num).odd?
@@ -164,14 +170,19 @@ class Piece
   end
 
   def diagonal?(pos)
+    # REV: while you are declaring this as an argument, you still have another instance variable with the same name. While it all works, maybe it would be better to give the instance variable a more specific name? Seeing all of these pos's around could be confusing. position? location? I dunno.
     (pos[0] + pos[1]).odd?
   end
 
   def inbounds?(pos)
+    # REV: This doesn't look like this is used, but should this be the board's responsibility to figure out? I know it increases further dependency on the Board class, but here the Piece is making assumptions about the board.
     (0..7).include?(pos[0]) && (0..7).include?(pos[1])
   end
 
   def slide_move_dirs
+    # REV: if you made subclasses of Piece called WhitePiece and BlackPiece the deltas could be set up ahead of time and the case statements would be unnecessary
+    # REV: slide_move_dirs sounds a little weird, maybe slide_directions...
+
     black_deltas = [[ 1,-1], [ 1, 1]]
     white_deltas = [[-1,-1], [-1, 1]]
 
@@ -191,6 +202,7 @@ class Piece
   end
 
   def jump_move_dirs
+    # REV: slide_move_dirs sounds a little weird, maybe jump_directions...
     slide_move_dirs.map {|pos| pos.map {|el| el*2}}
   end
 
@@ -212,6 +224,7 @@ class Piece
     jump_move_dirs.each do |delta|
       j_move = [current[0] + delta[0], current[1] + delta[1]]
       s_move = [current[0] + (delta[0]/2), current[1] + (delta[1]/2)]
+
       if @board.valid_pos?(j_move) && !@board.occupied?(j_move)
         if @board.occupied?(s_move)
           moves << j_move
@@ -225,4 +238,12 @@ class Piece
     slide_moves + jump_moves
   end
 
+end
+
+
+# REV: just trying to test it out...
+if $PROGRAM_NAME == __FILE__
+  game = Game.new
+
+  game.play_game
 end
