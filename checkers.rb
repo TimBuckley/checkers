@@ -1,28 +1,40 @@
 # -*- coding: utf-8 -*-
 require 'colorize'
 
-class Game
+#Tim Buckley's code
+
+class InvalidMoveError < StandardError
+end
+
+class Game  #Tim: Game class not really finished, so go easy on me here.
   attr_accessor :board
   def initialize
     @board = Board.new
     @players = [:white, :black]
     @current_player = :white
-    @board.render
   end
 
   def play_game
-    until game_over?
+    until game_won?(@current_player)
       play_turn(@current_player)
       @current_player = (@current_player == :white) ? :black : :white
     end
+
+    puts "Game Over"
   end
 
   def play_turn(color)
     @board.render
+    puts "#{@current_player.to_s.capitalize} Player, provide a move sequence:"
+
+    finish = gets.chomp.split(',').map {|el| el.to_i}
+    perform_move[start, finish]
   end
 
-  def game_over?()
-    # @board.
+  def game_won?(color) #Tim: Yeah I didn't really finish this.
+    # @board.pieces.each do |piece|
+  #     piece
+  #   end
   end
 
 end
@@ -84,16 +96,43 @@ class Board
     @rows[i][j] = piece
   end
 
+  def perform_moves!(seq)
+    case seq.length
+    when 0..1
+      raise "Invalid sequence"
+    when 2
+      begin
+        perform_slide(seq[0],seq[1])
+      rescue
+        perform_jump(seq[0],seq[1])
+      end
+    else
+      i = 0
+      while i + 1 < seq.length
+        perform_jump(seq[i], seq[i+1])
+        i += 1
+      end
+    end
+    nil
+  end
+
+  def perform_moves(seq)
+    if valid_move_seq(seq)
+      perform_moves!(seq)
+    else
+      raise InvalidMoveError.new("Gotta put the right kind of moves.")
+    end
+  end
 
   def perform_slide(start,finish)
     raise "start position is empty" if self[start].nil?
 
     piece = self[start]
-    if !piece.slide_moves.include?(finish)
+    unless piece.slide_moves.include?(finish)
       raise "piece doesn't move like that"
     end
-
     perform_slide!(start, finish)
+    if finish[0]
   end
 
   def perform_slide!(start,finish)
@@ -101,36 +140,69 @@ class Board
     self[finish] = piece
     self[start] = nil
     piece.pos = finish
+    piece.promotion
     nil
   end
 
-
-
-  def perform_jump(start,finish)
-
+  def jumpover_pos(start,finish)      #helper method
+    jump_pos = []
+    jump_pos[0] = (start[0] - ( ( start[0]-finish[0] ) /2) )
+    jump_pos[1] = (start[1] - ( ( start[1]-finish[1] ) /2) )
+    jump_pos
   end
 
+  def perform_jump(start,finish)
+    raise "Start position is empty." if self[start].nil?
+    raise "No piece to jump over." if self[jumpover_pos(start,finish)].nil?
+
+    perform_jump!(start,finish)
+  end
 
   def perform_jump!(start,finish)
-    jumpover_pos = []
+    jump_pos = jumpover_pos(start,finish)
 
-    jumpover_pos[0] = (start[0] - ((start[0]-finish[0] ) /2))
-    jumpover_pos[1] = (start[1] - ((start[1]-finish[1] ) /2))
-
-    self[jumpover_pos] = nil
+    self[jump_pos] = nil
     piece = self[start]
     self[finish], self[start] = piece, nil
     piece.pos = finish
+    piece.promotion
 
     nil
   end
 
+  def dup
+    duplicate = Board.new
+
+    self.rows.each_with_index do |row,row_num|
+      row.each_with_index do |square, col_num|
+        if square.nil?
+          duplicate[[row_num, col_num]] = nil
+        else
+          duplicate[[row_num, col_num]] = square.dup(duplicate)
+        end
+      end
+    end
+
+    duplicate
+  end
+
+  def valid_move_seq?(seq)
+    dup_board = self.board.dup
+    begin
+      dup_board.perform_moves!(seq)
+    rescue
+      false
+    else
+      true
+    end
+  end
 
   def valid_pos?(pos)
     pos.all? { |coord| coord.between?(0, 7)} && (pos[0]+pos[1]).odd?
   end
 
   def occupied?(position)
+    #self[position].nil?
     pieces.any? {|piece| piece.pos == position}
   end
 
@@ -142,6 +214,9 @@ end
 
 class Piece
   attr_accessor :color, :pos, :type, :symbol, :board
+
+  DELTAS = {black: [[ 1,-1], [ 1, 1]],
+            white: [[-1,-1], [-1, 1]]}
 
   def initialize(color = :white, pos, type, board)
     @color = color
@@ -155,8 +230,14 @@ class Piece
       king: { white: '♕', black: '♛' } }
   end
 
-  def promote
-    self.type = :king
+  def promotion
+    if self.color == :white && self.pos[0] == 0
+      self.type = :king
+    elsif self.color == :black && self.pos[0] == 7
+      self.type = :king
+    end
+
+    nil
   end
 
   def render
@@ -167,28 +248,15 @@ class Piece
     (pos[0] + pos[1]).odd?
   end
 
-  def inbounds?(pos)
-    (0..7).include?(pos[0]) && (0..7).include?(pos[1])
-  end
-
   def slide_move_dirs
-    black_deltas = [[ 1,-1], [ 1, 1]]
-    white_deltas = [[-1,-1], [-1, 1]]
-
     case self.type
     when :king
-      deltas = black_deltas + white_deltas
+      DELTAS[:white] + DELTAS[:black]
     else
-      case self.color
-      when :black
-        deltas = black_deltas
-      else
-        deltas = white_deltas
-      end
+      DELTAS[self.color]
     end
-
-    deltas
   end
+
 
   def jump_move_dirs
     slide_move_dirs.map {|pos| pos.map {|el| el*2}}
