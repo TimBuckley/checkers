@@ -40,7 +40,7 @@ class Game  #Tim: Game class not really finished, so go easy on me here.
 end
 
 class Board
-  attr_accessor :rows
+  attr_accessor :rows #REV more expressive var name
 
   def initialize(start_board = true)
     @rows = Array.new(8) { Array.new(8) }
@@ -48,9 +48,11 @@ class Board
   end
 
   def starting_positions
+	#REV you only use r_num and c_num and not the element itself. 
+	# maybe just iterate through the length ie rows.length.times do |r_num|
     self.rows.each_with_index do |row,r_num|
       row.each_with_index do |sqr, c_num|
-        if (r_num + c_num).odd?
+        if (r_num + c_num).odd? 
           case r_num
           when 0..2
             @rows[r_num][c_num] = Piece.new(:black, [r_num,c_num], :pawn, self)
@@ -63,7 +65,7 @@ class Board
   end
 
   def render
-    header = "   0 1 2 3 4 5 6 7"
+    header = "   0 1 2 3 4 5 6 7" #REV 8.times{ |i| header += "#{i}" } ?
     puts header + "\n"
     self.rows.each_with_index do |row,r_num|
       print r_num.to_s + " "
@@ -98,7 +100,7 @@ class Board
 
   def perform_moves!(seq)
     case seq.length
-    when 0..1
+    when 0..1 #REV trap invalid input earlier?
       raise "Invalid sequence"
     when 2
       begin
@@ -117,7 +119,7 @@ class Board
   end
 
   def perform_moves(seq)
-    if valid_move_seq(seq)
+    if valid_move_seq(seq) #REV no need to use boolean flag. can raise and retry
       perform_moves!(seq)
     else
       raise InvalidMoveError.new("Gotta put the right kind of moves.")
@@ -145,8 +147,10 @@ class Board
   end
 
   def jumpover_pos(start,finish)      #helper method
+	#REV start.each_with_index.map {|x,i| [x- ( x- finish[i])/2] }
+	#	also you have 2 sets of extra parens
     jump_pos = []
-    jump_pos[0] = (start[0] - ( ( start[0]-finish[0] ) /2) )
+    jump_pos[0] = (start[0] - ( ( start[0]-finish[0] ) /2) ) 
     jump_pos[1] = (start[1] - ( ( start[1]-finish[1] ) /2) )
     jump_pos
   end
@@ -259,6 +263,7 @@ class Piece
 
 
   def jump_move_dirs
+	#REV cool
     slide_move_dirs.map {|pos| pos.map {|el| el*2}}
   end
 
